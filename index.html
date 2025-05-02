@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Gallery</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <style>
+    body {
+      background-color: #f3f4f6;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      overflow: hidden; /* Ngăn cuộn ngoài container */
+    }
+    .container {
+      max-width: 100%;
+      margin: 0;
+    }
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background-color: #fff;
+      padding: 16px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      z-index: 10;
+    }
+    .header h1 {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 0;
+      text-align: center;
+    }
+    .tiktok-view {
+      height: 100vh;
+      overflow-y: auto;
+      scroll-snap-type: y mandatory;
+      margin-top: 60px; /* Khoảng cách cho header cố định */
+    }
+    .image-container {
+      height: 100vh;
+      scroll-snap-align: center;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .image-card {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .image-container p {
+      position: absolute;
+      bottom: 10px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      background-color: rgba(0, 0, 0, 0.5);
+      color: white;
+      margin: 0;
+      padding: 8px;
+      font-size: 14px;
+    }
+    .error {
+      color: #ef4444;
+      text-align: center;
+      padding: 16px;
+      font-size: 16px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Image Gallery</h1>
+    </div>
+    <div id="imageContainer" class="tiktok-view"></div>
+  </div>
+
+  <script>
+    let allImages = [];
+    let currentImageIndex = 0;
+    const container = document.getElementById('imageContainer');
+
+    // Hiển thị thông báo lỗi
+    function showError(message) {
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'error';
+      errorDiv.textContent = message;
+      container.appendChild(errorDiv);
+    }
+
+    // Đọc file CSV
+    fetch('https://dl.dropboxusercontent.com/scl/fi/qyo5edyr4jzx9rd7b9rrp/images.txt?rlkey=g0dfm86ddp761kqbne0937mxj&dl=1')
+      .then(response => {
+        if (!response.ok) throw new Error('Không thể tải file CSV: ' + response.statusText);
+        return response.text();
+      })
+      .then(data => {
+        console.log('Raw CSV data:', data);
+        Papa.parse(data, {
+          header: true,
+          complete: function(results) {
+            console.log('Parsed CSV results:', results);
+            allImages = results.data.filter(image => image.Url && image.Filename);
+            console.log('Filtered images:', allImages);
+            if (allImages.length === 0) {
+              showError('Không tìm thấy ảnh hợp lệ trong file CSV. Vui lòng kiểm tra định dạng file (yêu cầu cột "Filename" và "Url").');
+              return;
+            }
+            restoreViewState();
+            renderImage();
+            setupTouchNavigation();
+          },
+          error: function(error) {
+            showError('Lỗi khi phân tích CSV: ' + error);
+            console.error('Papa Parse error:', error);
+          }
+        });
+      })
+      .catch(error => {
+        showError('Lỗi khi tải file CSV: ' + error.message);
+        console.error('Fetch error:', error);
+      });
+
+    // Hiển thị ảnh hiện tại
+    function renderImage() {
+      if (currentImageIndex < 0 || currentImageIndex >= allImages.length) return;
+      container.innerHTML = '';
+      const image = allImages[currentImageIndex];
+      const div = document.createElement('div');
+      div.className = 'image-container';
+      div.dataset.index = currentImageIndex;
+      div.innerHTML = `
+        <img src="${image.Url}" alt="${image.Filename}" class="image-card" loading="lazy">
+        <p>${image.Filename}</p>
+      `;
+      container.appendChild(div);
+      saveViewState();
+    }
+
+    // Lưu trạng thái xem
+    function saveViewState() {
+      localStorage.setItem('galleryState', JSON.stringify({ currentImageIndex }));
+    }
+
+    // Khôi phục trạng thái xem
+    function restoreViewState() {
+      const savedState = localStorage.getItem('galleryState');
+      if (savedState) {
+        const state = JSON.parse(savedState);
+        currentImageIndex = Math.min(Math.max(0, state.currentImageIndex || 0), allImages.length - 1);
+      }
+    }
+
+    // Xử lý vuốt lên/xuống
+    function setupTouchNavigation() {
+      let touchStartY = 0;
+      let touchEndY = 0;
+
+      container.addEventListener('touchstart', e => {
+        touchStartY = e.changedTouches[0].screenY;
+      });
+
+      container.addEventListener('touchend', e => {
+        touchEndY = e.changedTouches[0].screenY;
+        handleSwipe();
+      });
+
+      function handleSwipe() {
+        const swipeDistance = touchStartY - touchEndY;
+        const minSwipeDistance = 50; // Khoảng cách tối thiểu để coi là vuốt
+
+        if (swipeDistance > minSwipeDistance) {
+          // Vuốt lên: chuyển sang ảnh tiếp theo
+          if (currentImageIndex < allImages.length - 1) {
+            currentImageIndex++;
+            renderImage();
+          }
+        } else if (swipeDistance < -minSwipeDistance) {
+          // Vuốt xuống: chuyển về ảnh trước
+          if (currentImageIndex > 0) {
+            currentImageIndex--;
+            renderImage();
+          }
+        }
+      }
+
+      // Hỗ trợ cuộn chuột (tùy chọn)
+      container.addEventListener('wheel', e => {
+        e.preventDefault();
+        if (e.deltaY > 0 && currentImageIndex < allImages.length - 1) {
+          currentImageIndex++;
+          renderImage();
+        } else if (e.deltaY < 0 && currentImageIndex > 0) {
+          currentImageIndex--;
+          renderImage();
+        }
+      });
+    }
+  </script>
+</body>
+</html>
