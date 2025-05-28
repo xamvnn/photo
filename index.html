@@ -41,26 +41,24 @@
     }
     .image-container {
       height: 100vh;
-      scroll-snap-align: center;
+      scroll-snap-align: start; /* Đổi từ center sang start để ảnh bắt đầu từ đầu khung */
       position: relative;
       display: flex;
-      justify-content: center;
-      align-items: center;
+      flex-direction: column; /* Sắp xếp theo cột để căn giữa tốt hơn */
+      justify-content: center; /* Căn giữa theo chiều dọc */
+      align-items: center; /* Căn giữa theo chiều ngang */
     }
     .image-card {
-      max-width: 100%;
-      max-height: 100%;
+      max-width: 90%; /* Giảm kích thước tối đa để tránh tràn */
+      max-height: 80%; /* Đảm bảo ảnh không chạm đáy */
       object-fit: contain;
     }
     .image-container p {
-      position: absolute;
-      bottom: 10px;
-      left: 0;
-      right: 0;
+      position: relative; /* Đổi thành relative để văn bản nằm dưới ảnh */
+      margin-top: 10px; /* Khoảng cách giữa ảnh và văn bản */
       text-align: center;
       background-color: rgba(0, 0, 0, 0.5);
       color: white;
-      margin: 0;
       padding: 8px;
       font-size: 14px;
     }
