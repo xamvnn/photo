@@ -27,32 +27,42 @@
         scroll-snap-align: start;
         position: relative;
         display: flex;
-        justify-content: center;
-        align-items: center;
+        flex-direction: column; /* Stack image and title vertically */
+        justify-content: flex-start; /* Align content to the top */
+        align-items: center; /* Center horizontally */
       }
       .image-card {
         max-width: 99%;
-        max-height: 85%;
+        max-height: 90%; /* Increased to allow more image height */
         object-fit: contain;
         display: block;
+        margin-top: 0; /* Ensure no extra margin at the top */
       }
       .image-container p {
         position: absolute;
-        top: 00px; /* Position at the top of the image */
-        left: 50%;
+        top: 10px; /* Close to the top of the image */
         transform: translateX(-50%);
-        text-align: center;
-        background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent black background */
         color: white;
-        padding: 10px 20px;
-        font-size: 18px; /* Larger font for title-like appearance */
+        padding: 5px 10px;
+        font-size: 3vw; /* Responsive font size for mobile */
         font-weight: bold;
-        border-radius: 5px;
         margin: 0;
         max-width: 95%;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); /* Add shadow for readability */
+      }
+      /* Media query for smaller screens */
+      @media (max-width: 600px) {
+        .image-container p {
+          font-size: 4vw; /* Slightly larger on very small screens */
+          top: 5px; /* Closer to the top on mobile */
+          padding: 3px 8px;
+        }
+        .image-card {
+          max-height: 85%; /* Slightly reduce height to fit title */
+        }
       }
       .error {
         color: #ef4444;
