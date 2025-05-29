@@ -17,51 +17,42 @@
         max-width: 100%;
         margin: 0;
       }
-      .header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        background-color: #fff;
-        padding: 16px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        z-index: 10;
-      }
-      .header h1 {
-        font-size: 24px;
-        font-weight: bold;
-        margin: 0;
-        text-align: center;
-      }
       .tiktok-view {
         height: 100vh;
         overflow-y: auto;
         scroll-snap-type: y mandatory;
-        margin-top: 60px;
       }
       .image-container {
         height: 100vh;
         scroll-snap-align: start;
         position: relative;
         display: flex;
-        flex-direction: column;
         justify-content: center;
         align-items: center;
-        transform: translateY(-30px); /* Dịch lên 30px */
       }
       .image-card {
-        max-width: 90%;
-        max-height: 80%;
+        max-width: 99%;
+        max-height: 85%;
         object-fit: contain;
+        display: block;
       }
       .image-container p {
-        position: relative;
-        margin-top: 30px;
+        position: absolute;
+        top: 00px; /* Position at the top of the image */
+        left: 50%;
+        transform: translateX(-50%);
         text-align: center;
-        background-color: rgba(0, 0, 0, 0.5);
+        background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent black background */
         color: white;
-        padding: 8px;
-        font-size: 14px;
+        padding: 10px 20px;
+        font-size: 18px; /* Larger font for title-like appearance */
+        font-weight: bold;
+        border-radius: 5px;
+        margin: 0;
+        max-width: 95%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .error {
         color: #ef4444;
@@ -77,49 +68,61 @@
   </head>
   <body>
     <div class="container">
-      <div class="header">
-        <h1>Image Gallery</h1>
-      </div>
       <div id="imageContainer" class="tiktok-view"></div>
     </div>
     <script>
       let allImages = [];
       let currentImageIndex = 0;
       const container = document.getElementById('imageContainer');
+
       function showError(message) {
         const errorDiv = document.createElement('div');
         errorDiv.className = 'error';
         errorDiv.textContent = message;
         container.appendChild(errorDiv);
       }
-      fetch('https://dl.dropboxusercontent.com/scl/fi/qyo5edyr4jzx9rd7b9rrp/images.txt?rlkey=g0dfm86ddp761kqbne0937mxj&dl=1').then(response => {
-        if (!response.ok) throw new Error('Không thể tải file CSV: ' + response.statusText);
-        return response.text();
-      }).then(data => {
-        console.log('Raw CSV data:', data);
-        Papa.parse(data, {
-          header: true,
-          complete: function(results) {
-            console.log('Parsed CSV results:', results);
-            allImages = results.data.filter(image => image.Url && image.Filename);
-            console.log('Filtered images:', allImages);
-            if (allImages.length === 0) {
-              showError('Không tìm thấy ảnh hợp lệ trong file CSV. Vui lòng kiểm tra định dạng file (yêu cầu cột "Filename" và "Url").');
-              return;
-            }
-            restoreViewState();
-            renderImage();
-            setupTouchNavigation();
-          },
-          error: function(error) {
-            showError('Lỗi khi phân tích CSV: ' + error);
-            console.error('Papa Parse error:', error);
+
+      fetch('https://dl.dropboxusercontent.com/scl/fi/qyo5edyr4jzx9rd7b9rrp/images.txt?rlkey=g0dfm86ddp761kqbne0937mxj&dl=1')
+        .then(response => {
+          if (!response.ok) throw new Error('Không thể tải file CSV: ' + response.statusText);
+          return response.text();
+        })
+        .then(data => {
+          console.log('Raw CSV data:', data);
+          if (!data.trim()) {
+            showError('File CSV rỗng. Vui lòng kiểm tra file.');
+            return;
           }
+          Papa.parse(data, {
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+              console.log('Parsed CSV results:', results);
+              console.log('Parsed data:', results.data);
+              console.log('Parsed meta:', results.meta);
+              allImages = results.data.filter(image => image.Url && image.Filename);
+              console.log('Filtered images:', allImages);
+              if (allImages.length === 0) {
+                showError(
+                  'Không tìm thấy ảnh hợp lệ trong file CSV. Vui lòng kiểm tra định dạng file (yêu cầu cột "Filename" và "Url"). Kiểm tra console để biết thêm chi tiết.'
+                );
+                return;
+              }
+              restoreViewState();
+              renderImage();
+              setupTouchNavigation();
+            },
+            error: function(error) {
+              showError('Lỗi khi phân tích CSV: ' + error.message);
+              console.error('Papa Parse error:', error);
+            }
+          });
+        })
+        .catch(error => {
+          showError('Lỗi khi tải file CSV: ' + error.message);
+          console.error('Fetch error:', error);
         });
-      }).catch(error => {
-        showError('Lỗi khi tải file CSV: ' + error.message);
-        console.error('Fetch error:', error);
-      });
+
       function renderImage() {
         if (currentImageIndex < 0 || currentImageIndex >= allImages.length) return;
         container.innerHTML = '';
@@ -134,11 +137,11 @@
         container.appendChild(div);
         saveViewState();
       }
+
       function saveViewState() {
-        localStorage.setItem('galleryState', JSON.stringify({
-          currentImageIndex
-        }));
+        localStorage.setItem('galleryState', JSON.stringify({ currentImageIndex }));
       }
+
       function restoreViewState() {
         const savedState = localStorage.getItem('galleryState');
         if (savedState) {
@@ -146,6 +149,7 @@
           currentImageIndex = Math.min(Math.max(0, state.currentImageIndex || 0), allImages.length - 1);
         }
       }
+
       function setupTouchNavigation() {
         let touchStartY = 0;
         let touchEndY = 0;
