@@ -27,41 +27,67 @@
         scroll-snap-align: start;
         position: relative;
         display: flex;
-        flex-direction: column; /* Stack image and title vertically */
-        justify-content: flex-start; /* Align content to the top */
-        align-items: center; /* Center horizontally */
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: center;
       }
       .image-card {
         max-width: 99%;
-        max-height: 90%; /* Increased to allow more image height */
+        max-height: 90%;
         object-fit: contain;
         display: block;
-        margin-top: 0; /* Ensure no extra margin at the top */
+        margin-top: 0;
       }
       .image-container p {
         position: absolute;
-        top: 10px; /* Close to the top of the image */
-        transform: translateX(-50%);
+        top: 10px;
+        left: 10px;
+        text-align: left;
         color: white;
         padding: 5px 10px;
-        font-size: 3vw; /* Responsive font size for mobile */
+        font-size: 3vw;
         font-weight: bold;
         margin: 0;
         max-width: 95%;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); /* Add shadow for readability */
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+      }
+      .auto-play-button {
+        position: absolute;
+        top: 40px; /* Below the filename */
+        left: 10px;
+        background-color: rgba(0, 0, 0, 0.5);
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        font-size: 2.5vw;
+        font-weight: bold;
+        cursor: pointer;
+        border-radius: 5px;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        transition: opacity 0.3s ease;
+      }
+      .auto-play-button.hidden {
+        opacity: 0;
+        pointer-events: none;
       }
       /* Media query for smaller screens */
       @media (max-width: 600px) {
         .image-container p {
-          font-size: 4vw; /* Slightly larger on very small screens */
-          top: 5px; /* Closer to the top on mobile */
+          font-size: 3.5vw;
+          top: 5px;
+          left: 5px;
           padding: 3px 8px;
         }
         .image-card {
-          max-height: 85%; /* Slightly reduce height to fit title */
+          max-height: 85%;
+        }
+        .auto-play-button {
+          top: 30px; /* Closer to filename on mobile */
+          font-size: 3vw;
+          padding: 6px 12px;
         }
       }
       .error {
@@ -83,6 +109,9 @@
     <script>
       let allImages = [];
       let currentImageIndex = 0;
+      let autoPlayInterval = null;
+      let hideButtonTimeout = null;
+      const defaultInterval = 3000; // 3 seconds default
       const container = document.getElementById('imageContainer');
 
       function showError(message) {
@@ -121,6 +150,7 @@
               restoreViewState();
               renderImage();
               setupTouchNavigation();
+              setupButtonVisibility();
             },
             error: function(error) {
               showError('Lỗi khi phân tích CSV: ' + error.message);
@@ -143,9 +173,49 @@
         div.innerHTML = `
           <img src="${image.Url}" alt="${image.Filename}" class="image-card" loading="lazy">
           <p>${image.Filename}</p>
+          <button class="auto-play-button" onclick="toggleAutoPlay()">Auto Play: ${autoPlayInterval ? 'On' : 'Off'}</button>
         `;
         container.appendChild(div);
         saveViewState();
+      }
+
+      function toggleAutoPlay() {
+        const button = document.querySelector('.auto-play-button');
+        if (autoPlayInterval) {
+          clearInterval(autoPlayInterval);
+          autoPlayInterval = null;
+          button.textContent = 'Auto Play: Off';
+        } else {
+          let interval = prompt('Nhập số giây cho mỗi ảnh (mặc định 3 giây):', '3');
+          interval = parseFloat(interval) || 3; // Default to 3 if invalid
+          if (interval <= 0) interval = 3; // Prevent negative or zero
+          autoPlayInterval = setInterval(() => {
+            if (currentImageIndex < allImages.length - 1) {
+              currentImageIndex++;
+            } else {
+              currentImageIndex = 0; // Loop back to start
+            }
+            renderImage();
+          }, interval * 1000);
+          button.textContent = 'Auto Play: On';
+        }
+      }
+
+      function setupButtonVisibility() {
+        const showButton = () => {
+          const button = document.querySelector('.auto-play-button');
+          if (button) {
+            button.classList.remove('hidden');
+            clearTimeout(hideButtonTimeout);
+            hideButtonTimeout = setTimeout(() => {
+              button.classList.add('hidden');
+            }, 3000); // Hide after 3 seconds
+          }
+        };
+
+        container.addEventListener('touchstart', showButton);
+        container.addEventListener('mousemove', showButton);
+        container.addEventListener('touchend', showButton); // Ensure button shows after swipe
       }
 
       function saveViewState() {
