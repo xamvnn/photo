@@ -54,9 +54,8 @@
         white-space: nowrap;
         text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
       }
-      .auto-play-button {
+      .auto-play-button, .random-button {
         position: absolute;
-        top: 40px; /* Below the filename */
         left: 10px;
         background-color: rgba(0, 0, 0, 0.5);
         color: white;
@@ -69,7 +68,13 @@
         text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
         transition: opacity 0.3s ease;
       }
-      .auto-play-button.hidden {
+      .auto-play-button {
+        top: 40px;
+      }
+      .random-button {
+        top: 80px; /* Below auto-play button */
+      }
+      .auto-play-button.hidden, .random-button.hidden {
         opacity: 0;
         pointer-events: none;
       }
@@ -85,7 +90,12 @@
           max-height: 85%;
         }
         .auto-play-button {
-          top: 30px; /* Closer to filename on mobile */
+          top: 30px;
+          font-size: 3vw;
+          padding: 6px 12px;
+        }
+        .random-button {
+          top: 50px; /* Below auto-play button on mobile */
           font-size: 3vw;
           padding: 6px 12px;
         }
@@ -110,6 +120,8 @@
       let allImages = [];
       let currentImageIndex = 0;
       let autoPlayInterval = null;
+      let randomMode = false;
+      let initialRandomIndex = null;
       let hideButtonTimeout = null;
       const defaultInterval = 3000; // 3 seconds default
       const container = document.getElementById('imageContainer');
@@ -174,6 +186,7 @@
           <img src="${image.Url}" alt="${image.Filename}" class="image-card" loading="lazy">
           <p>${image.Filename}</p>
           <button class="auto-play-button" onclick="toggleAutoPlay()">Auto Play: ${autoPlayInterval ? 'On' : 'Off'}</button>
+          <button class="random-button" onclick="toggleRandom()">Random: ${randomMode ? 'On' : 'Off'}</button>
         `;
         container.appendChild(div);
         saveViewState();
@@ -187,35 +200,77 @@
           button.textContent = 'Auto Play: Off';
         } else {
           let interval = prompt('Nhập số giây cho mỗi ảnh (mặc định 3 giây):', '3');
-          interval = parseFloat(interval) || 3; // Default to 3 if invalid
-          if (interval <= 0) interval = 3; // Prevent negative or zero
+          interval = parseFloat(interval) || 3;
+          if (interval <= 0) interval = 3;
           autoPlayInterval = setInterval(() => {
-            if (currentImageIndex < allImages.length - 1) {
-              currentImageIndex++;
+            if (randomMode) {
+              let newIndex = currentImageIndex;
+              while (newIndex === currentImageIndex) {
+                newIndex = Math.floor(Math.random() * allImages.length);
+              }
+              currentImageIndex = newIndex;
             } else {
-              currentImageIndex = 0; // Loop back to start
+              if (currentImageIndex < allImages.length - 1) {
+                currentImageIndex++;
+              } else {
+                currentImageIndex = 0;
+              }
             }
             renderImage();
           }, interval * 1000);
           button.textContent = 'Auto Play: On';
         }
+        renderImage(); // Update button text
+      }
+
+      function toggleRandom() {
+        const button = document.querySelector('.random-button');
+        if (randomMode) {
+          clearInterval(autoPlayInterval);
+          autoPlayInterval = null;
+          document.querySelector('.auto-play-button').textContent = 'Auto Play: Off';
+          currentImageIndex = initialRandomIndex; // Return to initial index
+          randomMode = false;
+          button.textContent = 'Random: Off';
+        } else {
+          initialRandomIndex = currentImageIndex; // Save initial index
+          randomMode = true;
+          button.textContent = 'Random: On';
+          if (!autoPlayInterval) {
+            let interval = prompt('Nhập số giây cho mỗi ảnh (mặc định 3 giây):', '3');
+            interval = parseFloat(interval) || 3;
+            if (interval <= 0) interval = 3;
+            autoPlayInterval = setInterval(() => {
+              let newIndex = currentImageIndex;
+              while (newIndex === currentImageIndex) {
+                newIndex = Math.floor(Math.random() * allImages.length);
+              }
+              currentImageIndex = newIndex;
+              renderImage();
+            }, interval * 1000);
+            document.querySelector('.auto-play-button').textContent = 'Auto Play: On';
+          }
+        }
+        renderImage(); // Update button text
       }
 
       function setupButtonVisibility() {
-        const showButton = () => {
-          const button = document.querySelector('.auto-play-button');
-          if (button) {
+        const showButtons = () => {
+          const buttons = document.querySelectorAll('.auto-play-button, .random-button');
+          buttons.forEach(button => {
             button.classList.remove('hidden');
-            clearTimeout(hideButtonTimeout);
-            hideButtonTimeout = setTimeout(() => {
+          });
+          clearTimeout(hideButtonTimeout);
+          hideButtonTimeout = setTimeout(() => {
+            buttons.forEach(button => {
               button.classList.add('hidden');
-            }, 3000); // Hide after 3 seconds
-          }
+            });
+          }, 3000);
         };
 
-        container.addEventListener('touchstart', showButton);
-        container.addEventListener('mousemove', showButton);
-        container.addEventListener('touchend', showButton); // Ensure button shows after swipe
+        container.addEventListener('touchstart', showButtons);
+        container.addEventListener('mousemove', showButtons);
+        container.addEventListener('touchend', showButtons);
       }
 
       function saveViewState() {
